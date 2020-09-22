@@ -4,12 +4,18 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Ball Settings")]
     public Transform ball;
     public Vector3 ballDir;
     public float ballSpeed = 10f;
+    public float defaultBallSpeed;
 
+
+    [Header("Object Positions")]
     public Transform player1;
     public Transform player2;
+    public Transform player1LaunchPos;
+    public Transform player2LaunchPos;
 
     private bool player1LastHit = false;
     private bool player2LastHit = false;
@@ -20,7 +26,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 player1StartingPos;
     private Vector3 player2StartingPos;
 
-
+    [Header("Movement Settings")]
     public float movementSpeedPlayer1 = 10f;
     public float movementSpeedPlayer2 = 10f;
     public float movementSpeedBase = 10f;
@@ -28,10 +34,11 @@ public class PlayerController : MonoBehaviour
     private float maxTopPos;
     private float maxBottomPos;
 
-
     // powerups
     private float powerUp_SlowDownDuration = 5f;
     private float powerUp_OverspeedDuration = 5f;
+
+    private bool ballIsShot = false;
 
     // Start is called before the first frame update
     void Start()
@@ -43,7 +50,7 @@ public class PlayerController : MonoBehaviour
         maxBottomPos = bottomWall.position.z + topWall.localScale.y;
 
         ballDir = Vector3.left;
-
+        defaultBallSpeed = ballSpeed;
     }
 
     // Update is called once per frame
@@ -68,7 +75,10 @@ public class PlayerController : MonoBehaviour
         {
             player2.position = new Vector3(player2.position.x, player2.position.y, player2.position.z - movementSpeedPlayer2 * Time.deltaTime);
         }
-
+        if (Input.GetKeyDown(KeyCode.Space) && ballSpeed == 0f)
+        {
+            ballIsShot = true;
+        }
 
         // ball movement
         ball.position = ball.position + (ballDir * ballSpeed * Time.deltaTime);
@@ -106,7 +116,8 @@ public class PlayerController : MonoBehaviour
         if (collidedObj.CompareTag("Obstacle"))
         {
             // checking if ball most front part is less then obstacle back part or if ball most back part is in front of obstacles most front part
-            if ((ball.position.x + ball.localScale.x / 2) <= (collidedObj.transform.position.x - collidedObj.transform.localScale.x / 2) || (ball.position.x - ball.localScale.x / 2) >= (collidedObj.transform.position.x + collidedObj.transform.localScale.x / 2))
+            if ((ball.position.x + ball.localScale.x / 2) <= (collidedObj.transform.position.x - collidedObj.transform.localScale.x / 2) 
+                || (ball.position.x - ball.localScale.x / 2) >= (collidedObj.transform.position.x + collidedObj.transform.localScale.x / 2))
             {
                 ballDir = Vector3.Reflect(ballDir, Vector3.right);
             }
@@ -126,6 +137,11 @@ public class PlayerController : MonoBehaviour
             else if (collidedObj.name.Contains("PowerUp_Overspeed"))
             {
                 StartCoroutine(PowerUp_Overspeed());
+                Destroy(collidedObj.gameObject);
+            }
+            else if (collidedObj.name.Contains("PowerUp_Magnet"))
+            {
+                StartCoroutine(PowerUp_Magnet());
                 Destroy(collidedObj.gameObject);
             }
         }
@@ -156,5 +172,30 @@ public class PlayerController : MonoBehaviour
 
         if (player1HitLast) { movementSpeedPlayer1 = movementSpeedBase; }
         else { movementSpeedPlayer2 = movementSpeedBase; }
+    }
+
+    private IEnumerator PowerUp_Magnet()
+    {
+        ballSpeed = 0f;
+        ballIsShot = false;
+        if (player1LastHit)
+        {
+            this.transform.position = player1LaunchPos.position;
+            this.transform.parent = player1.transform;
+        }
+        else
+        {
+            this.transform.position = player2LaunchPos.position;
+            this.transform.parent = player2.transform;
+        }
+
+        yield return new WaitUntil(() => ballIsShot);
+
+        this.transform.parent = null;
+
+        if (player1LastHit) { ballDir = Vector3.right; }
+        else { ballDir = Vector3.left; }
+        ballSpeed = defaultBallSpeed;
+
     }
 }
