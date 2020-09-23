@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -35,10 +36,19 @@ public class PlayerController : MonoBehaviour
     private float maxBottomPos;
 
     // powerups
+    [Header("Movement Settings")]
     private float powerUp_SlowDownDuration = 5f;
     private float powerUp_OverspeedDuration = 5f;
 
     private bool ballIsShot = false;
+
+    [Header("Sinusoid settings")]
+    float startTime;
+    float offset;
+    bool sinusoidPowerupOn = false;
+    public float peroid = 20f;
+    public float amplitude = 0.2f;
+    public float sinusoidDuration = 3f;
 
     // Start is called before the first frame update
     void Start()
@@ -51,6 +61,8 @@ public class PlayerController : MonoBehaviour
 
         ballDir = Vector3.left;
         defaultBallSpeed = ballSpeed;
+        
+        startTime = Time.time;
     }
 
     // Update is called once per frame
@@ -83,20 +95,30 @@ public class PlayerController : MonoBehaviour
         // ball movement
         ball.position = ball.position + (ballDir * ballSpeed * Time.deltaTime);
 
+        // sinusoid movement
+        if (sinusoidPowerupOn)
+        {
+            var offset = amplitude *(Mathf.Sin(peroid * (Time.time - startTime)));
+            ball.position = new Vector3(ball.position.x, ball.position.y, ball.position.z + offset);
+        }
 
-        Debug.Log(ballDir);
+        // Debug.Log(ballDir);
+        // Debug.Log(Time.time - startTime);
     }
 
     private void OnCollisionEnter(Collision collision)
     {
         GameObject collidedObj = collision.gameObject;
+
+        // disabling sinusoid movement
+        //sinusoidDuration = 0f;
+        //sinusoidPowerupOn = false;
+
         if (collidedObj.CompareTag("Player1") || collidedObj.CompareTag("Player2"))
         {
-            Debug.Log("Collided");
-
             if (collidedObj.CompareTag("Player1"))
-            { 
-                player1LastHit = true; 
+            {
+                player1LastHit = true;
                 player2LastHit = false;
             }
             else
@@ -106,8 +128,9 @@ public class PlayerController : MonoBehaviour
             }
 
             ballDir = Vector3.Reflect(ballDir, Vector3.right);
+
             // randomize a bit
-            ballDir = new Vector3(ballDir.x, ballDir.y, ballDir.z + Random.Range(-1f, 1f));
+            ballDir = new Vector3(ballDir.x, ballDir.y, ballDir.z + UnityEngine.Random.Range(-1f, 1f));
         }
         if (collidedObj.CompareTag("Wall"))
         {
@@ -116,7 +139,7 @@ public class PlayerController : MonoBehaviour
         if (collidedObj.CompareTag("Obstacle"))
         {
             // checking if ball most front part is less then obstacle back part or if ball most back part is in front of obstacles most front part
-            if ((ball.position.x + ball.localScale.x / 2) <= (collidedObj.transform.position.x - collidedObj.transform.localScale.x / 2) 
+            if ((ball.position.x + ball.localScale.x / 2) <= (collidedObj.transform.position.x - collidedObj.transform.localScale.x / 2)
                 || (ball.position.x - ball.localScale.x / 2) >= (collidedObj.transform.position.x + collidedObj.transform.localScale.x / 2))
             {
                 ballDir = Vector3.Reflect(ballDir, Vector3.right);
@@ -129,23 +152,36 @@ public class PlayerController : MonoBehaviour
         }
         if (collidedObj.CompareTag("PowerUp"))
         {
-            if(collidedObj.name.Contains("PowerUp_SlowDown"))
-            {
-                StartCoroutine(PowerUp_SlowDown());
-                Destroy(collidedObj.gameObject);
-            }
-            else if (collidedObj.name.Contains("PowerUp_Overspeed"))
-            {
-                StartCoroutine(PowerUp_Overspeed());
-                Destroy(collidedObj.gameObject);
-            }
-            else if (collidedObj.name.Contains("PowerUp_Magnet"))
-            {
-                StartCoroutine(PowerUp_Magnet());
-                Destroy(collidedObj.gameObject);
-            }
-        }
+            // "OLD" code
+            //if(collidedObj.name.Contains("PowerUp_SlowDown"))
+            //{
+            //    StartCoroutine(PowerUp_SlowDown());
+            //}
+            //else if (collidedObj.name.Contains("PowerUp_Overspeed"))
+            //{
+            //    StartCoroutine(PowerUp_Overspeed());
+            //}
+            //else if (collidedObj.name.Contains("PowerUp_Magnet"))
+            //{
+            //    StartCoroutine(PowerUp_Magnet());
+            //}
+            //else if (collidedObj.name.Contains("PowerUp_Sinusoid"))
+            //{
+            //    StartCoroutine(PowerUp_Sinusoid());
+            //}
 
+            if (collidedObj.name.Contains(" "))
+            {
+                string coroutineName = collidedObj.name.Substring(0, collidedObj.name.IndexOf(' '));
+                StartCoroutine(coroutineName);
+            }
+            else
+            {
+                StartCoroutine(collidedObj.name);
+            }
+
+            Destroy(collidedObj.gameObject);
+        }
 
         ballDir.Normalize();
     }
@@ -196,6 +232,16 @@ public class PlayerController : MonoBehaviour
         if (player1LastHit) { ballDir = Vector3.right; }
         else { ballDir = Vector3.left; }
         ballSpeed = defaultBallSpeed;
+    }
 
+    private IEnumerator PowerUp_Sinusoid()
+    {
+        startTime = Time.time;
+        offset = 0f;
+        sinusoidPowerupOn = true;
+
+        yield return new WaitUntil(() => (Time.time - startTime) > sinusoidDuration);
+
+        sinusoidPowerupOn = false;
     }
 }
