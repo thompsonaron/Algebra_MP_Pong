@@ -1,74 +1,8 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
-public class PlayerController : MonoBehaviour
+public partial class PlayerController : MonoBehaviour
 {
-    [Header("Ball Settings")]
-    public Transform ball;
-    public Vector3 ballDir;
-    public float ballSpeed = 10f;
-    public float defaultBallSpeed;
-
-
-    [Header("Object Positions")]
-    public Transform player1;
-    public Transform player2;
-    public Transform player1LaunchPos;
-    public Transform player2LaunchPos;
-
-    private bool player1LastHit = false;
-    private bool player2LastHit = false;
-
-    public Transform topWall;
-    public Transform bottomWall;
-
-    private Vector3 player1StartingPos;
-    private Vector3 player2StartingPos;
-
-    [Header("Movement Settings")]
-    public float movementSpeedPlayer1 = 10f;
-    public float movementSpeedPlayer2 = 10f;
-    public float movementSpeedBase = 10f;
-
-    private float maxTopPos;
-    private float maxBottomPos;
-
-    // powerups
-    [Header("Movement Settings")]
-    private float powerUp_SlowDownDuration = 5f;
-    private float powerUp_OverspeedDuration = 5f;
-
-    private bool ballIsShot = false;
-
-    [Header("Sinusoid settings")]
-    float startTime;
-    float offset;
-    bool sinusoidPowerupOn = false;
-    public float peroid = 20f;
-    public float amplitude = 0.2f;
-    public float sinusoidDuration = 3f;
-
-    [Header("Spawner prefabs")]
-    public GameObject[] spawnItems;
-    public float spawnItemsY = 0.25f;
-    public float spawnItemsMinMaxZ = 4.1f;
-    public float spawnItemsMinMaxX = 6.5f;
-    public float itemSpawnTime = 5f;
-
-    // player points
-    int player1Points;
-    int player2Points;
-
-    // UI
-    public Text player1ScoreText;
-    public Text player2ScoreText;
-    public Text time;
-
-
-    // Start is called before the first frame update
     void Start()
     {
         player1StartingPos = player1.position;
@@ -91,13 +25,6 @@ public class PlayerController : MonoBehaviour
         StartCoroutine(SpawnItemsRoutine());
     }
 
-    private void UpdateScore()
-    {
-        player1ScoreText.text = player1Points.ToString();
-        player2ScoreText.text = player2Points.ToString();
-    }
-
-    // Update is called once per frame
     void Update()
     {
         // player1 input
@@ -133,39 +60,34 @@ public class PlayerController : MonoBehaviour
             var offset = amplitude * (Mathf.Sin(peroid * (Time.time - startTime)));
             ball.position = new Vector3(ball.position.x, ball.position.y, ball.position.z + offset);
         }
+    }
 
-        // Debug.Log(ballDir);
-        // Debug.Log(Time.time - startTime);
-
-        // TODO increase ball speed if it is above 0
+    private void UpdateScore()
+    {
+        player1ScoreText.text = player1Points.ToString();
+        player2ScoreText.text = player2Points.ToString();
     }
 
     private void OnCollisionEnter(Collision collision)
     {
         GameObject collidedObj = collision.gameObject;
 
-        // disabling sinusoid movement
-        //sinusoidDuration = 0f;
-        //sinusoidPowerupOn = false;
-
         if (collidedObj.CompareTag("Player1") || collidedObj.CompareTag("Player2"))
         {
             if (collidedObj.CompareTag("Player1"))
             {
                 player1LastHit = true;
-                player2LastHit = false;
+              //  player2LastHit = false;
             }
             else
             {
                 player1LastHit = false;
-                player2LastHit = true;
+                //player2LastHit = true;
             }
 
             ballDir = Vector3.Reflect(ballDir, Vector3.right);
-
             // randomize a bit
             ballDir = new Vector3(ballDir.x, ballDir.y, ballDir.z + UnityEngine.Random.Range(-1f, 1f));
-
             ballSpeed += 0.5f;
         }
         if (collidedObj.CompareTag("Wall"))
@@ -194,24 +116,6 @@ public class PlayerController : MonoBehaviour
         }
         if (collidedObj.CompareTag("PowerUp"))
         {
-            #region OldCode
-            //if(collidedObj.name.Contains("PowerUp_SlowDown"))
-            //{
-            //    StartCoroutine(PowerUp_SlowDown());
-            //}
-            //else if (collidedObj.name.Contains("PowerUp_Overspeed"))
-            //{
-            //    StartCoroutine(PowerUp_Overspeed());
-            //}
-            //else if (collidedObj.name.Contains("PowerUp_Magnet"))
-            //{
-            //    StartCoroutine(PowerUp_Magnet());
-            //}
-            //else if (collidedObj.name.Contains("PowerUp_Sinusoid"))
-            //{
-            //    StartCoroutine(PowerUp_Sinusoid());
-            //} 
-            #endregion
             if (collidedObj.name.Contains("("))// or PowerUp
             {
                 string coroutineName = collidedObj.name.Substring(0, collidedObj.name.IndexOf('('));
@@ -248,25 +152,25 @@ public class PlayerController : MonoBehaviour
     private IEnumerator RestartPlay(bool player1Scored)
     {
         // restart ball, players,remove all powerups and obstacles and start and change ball direction towards losing point player
+        // disabling
+        ballSpeed = 0f;
+        sinusoidPowerupOn = false;
+        // repositioning
         player1.position = player1StartingPos;
         player2.position = player2StartingPos;
         ball.position = new Vector3(0f, ball.position.y, 0f);
         
+        // clearing
         GameObject[] spawnedPowerUps = GameObject.FindGameObjectsWithTag("PowerUp");
         GameObject[] spawnedObstacles = GameObject.FindGameObjectsWithTag("Obstacle");
         foreach (var item in spawnedPowerUps) { Destroy(item); }
         foreach (var item in spawnedObstacles) { Destroy(item); }
-
-        ballSpeed = 0f;
-        sinusoidPowerupOn = false;
+        
         // 2 time
         time.text = "2";
         yield return new WaitForSeconds(1f);
         ballDir = Vector3.left;
-        if (player1Scored)
-        {
-            ballDir = Vector3.right;
-        }
+        if (player1Scored) { ballDir = Vector3.right; }
         // 1 time
         time.text = "1";
         yield return new WaitForSeconds(1f);
@@ -279,6 +183,7 @@ public class PlayerController : MonoBehaviour
     private IEnumerator PowerUp_SlowDown()
     {
         bool player1HitLast = player1LastHit;
+
         if (player1HitLast) { movementSpeedPlayer1 /= 2; }
         else { movementSpeedPlayer2 /= 2; }
 
@@ -330,11 +235,8 @@ public class PlayerController : MonoBehaviour
     private IEnumerator PowerUp_Sinusoid()
     {
         startTime = Time.time;
-        offset = 0f;
         sinusoidPowerupOn = true;
-
         yield return new WaitUntil(() => (Time.time - startTime) > sinusoidDuration);
-
         sinusoidPowerupOn = false;
     }
 

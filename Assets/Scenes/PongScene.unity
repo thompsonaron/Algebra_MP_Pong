@@ -1970,7 +1970,7 @@ MonoBehaviour:
   movementSpeedPlayer2: 10
   movementSpeedBase: 10
   peroid: 20
-  amplitude: 0.2
+  amplitude: 0.1
   sinusoidDuration: 3
   spawnItems:
   - {fileID: 7118645161117633499, guid: c9d95fcc9661fe240bd8c01b324fa4d4, type: 3}
